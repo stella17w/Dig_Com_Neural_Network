@@ -12,23 +12,24 @@ radio_mod={'BPSK':0,'QPSK':1,'8PSK':2,'QAM16':3,'QAM64':4,'BFSK':5,'CPFSK':6,'PA
 class RadioNN(nn.Module):
     def __init__(self):
         super().__init__()
-        self.main1=nn.Conv1d(2,64,2)
+        self.conv1=nn.Conv1d(2,64,11)
         self.act1=nn.ReLU()
-        self.main2=nn.Conv1d(64,2,1)
+        self.conv2=nn.Conv1d(64,2,11)
         self.act2=nn.ReLU()
-        self.main3=nn.Conv1d(2,64,1)
+        self.conv3=nn.Conv1d(2,64,11)
         self.act3=nn.ReLU()
-        self.linear1=nn.Linear(127,64)
-        self.linear2=nn.Linear(64,227)
-        self.linear3=nn.Linear(227,2)
-        self.output=nn.MaxPool1d(1)
-        self.act_output=nn.Softmax(1)
+        self.linear1=nn.Linear(98,64)
+        self.linear2=nn.Linear(64,256)
+        self.linear3=nn.Linear(256,2)
+        self.pool=nn.MaxPool1d(1)
+        self.output=nn.Softmax(1)
 
     def forward(self, x):
-        x = self.act1(self.main1(x))
-        x = self.act2(self.main2(x))
+        x = self.act1(self.conv1(x))
+        x = self.act2(self.conv2(x))
+        x = self.act3(self.conv3(x))
         x = self.linear3(self.linear2(self.linear1(x)))
-        x = self.act_output(self.output(x))
+        x = self.output(self.pool(x))
         return x [:, -1, :]
 
 model=RadioNN()
