@@ -8,20 +8,24 @@ with open("2016.04C.multisnr.pkl", 'rb') as file:
 
 test={}
 validation={}
+keys=[key for key in data]
 
 #pick 20% and split into validation and test
-num=int(0.1*len(data))
-for i in range(0,num):
-    rand_num=random.randint(0,len(data)-1)
-    keys=[key for key in data]
-    rand_key=keys[rand_num]
-    test[rand_key]=data[rand_key]
-    data.pop(rand_key)
-    rand_num=random.randint(0,len(data)-1)
-    keys=[key for key in data]
-    rand_key=keys[rand_num]
-    validation[rand_key]=data[rand_key]
-    data.pop(rand_key)
+for k in keys:
+    num=int(0.1*len(data))
+    for i in range(0,num):
+        rand_num=random.randint(0,len(data[k])-1)
+        if i==0:
+            test[k]=[data[k][rand_num]]
+        else:
+            test[k].append(data[k][rand_num])
+        numpy.delete(data[k],rand_num)
+        rand_num=random.randint(0,len(data[k])-1)
+        if i==0:
+            validation[k]=[data[k][rand_num]]
+        else:
+            validation[k].append(data[k][rand_num])
+        numpy.delete(data[k],rand_num)
 
 #pickle the sets into training, test, and validation
 with open("training.pkl",'wb') as file:
