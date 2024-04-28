@@ -32,16 +32,20 @@ class RadioNN(nn.Module):
         self.conv3=nn.Conv1d(64,12,9)
         self.act3=nn.ReLU()
         self.pool=nn.MaxPool1d(9)
+        self.hidden2=nn.BatchNorm1d(12)
         self.linear1=nn.Linear(11,64)
+        self.hidden3=nn.BatchNorm1d(12)
         self.linear2=nn.Linear(64,256)
+        self.hidden4=nn.BatchNorm1d(12)
         self.linear3=nn.Linear(256,1)
+        self.hidden5=nn.BatchNorm1d(12)
         self.output=nn.Softmax(1)
 
     def forward(self, x):
         x = self.act1(self.conv1(self.hidden1(x)))
         x = self.act2(self.conv2(x))
         x = self.pool(self.act3(self.conv3(x)))
-        x = self.linear3(self.linear2(self.linear1(x)))
+        x = self.hidden5(self.linear3(self.hidden4(self.linear2(self.hidden3(self.linear1(self.hidden2(x)))))))
         x = self.output(x)
         return x[:,:,-1]
 
@@ -50,7 +54,7 @@ model=RadioNN()
 #~Training
 
 model.conv1.reset_parameters()
-model.conv2.reset_parameters()\
+model.conv2.reset_parameters()
 model.conv3.reset_parameters()
 model.linear1.reset_parameters()
 model.linear2.reset_parameters()
