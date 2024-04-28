@@ -12,9 +12,9 @@ radio_mod={'BPSK': 0,
            '8PSK': 2,
            'QAM16':3,
            'QAM64':4,
-           'BFSK':5,
-           'CPFSK':6,
-           'PAM4':7,
+           'PAM4':5,
+           'BFSK':6,
+           'CPFSK':7,
            'GFSK':8,
            'WBFM':9,
            'AM-SSB':10,
@@ -103,6 +103,7 @@ y_valid=torch.Tensor(np.array(y_valid))
 #training loop
 
 mini_batch_size=64
+first_accurary=-3
 previous_accurary=-2
 current_accurary=-1
 y_pred = model(x_valid[0:len(x_valid)])
@@ -115,7 +116,7 @@ t_loss=[current_loss.detach().float()]
 t_accurary=[(torch.argmax(y_pred,dim=1) == y_train).float().mean()*100]
 
 #add stopping critera
-while current_accurary>previous_accurary or current_accurary==0:
+while current_accurary>previous_accurary or current_accurary>first_accurary:
     for i in range(0, len(train_data), mini_batch_size):
         xbatch = x_train[i:i+mini_batch_size]
         ypred=model(xbatch)
@@ -125,6 +126,7 @@ while current_accurary>previous_accurary or current_accurary==0:
         current_loss.backward()
         optimizer.step()
     #calcluate loss and accurary
+    first_accurary=previous_accurary
     previous_accurary=current_accurary
     y_pred = model(x_valid[0:len(x_valid)])
     current_loss=fn_loss(y_pred,y_valid.long())
@@ -175,7 +177,38 @@ y_pred = model(x_test[0:len(x_test)])
 final_accurary=(torch.argmax(y_pred,dim=1) == y_test).float().mean()*100
 print("Final accuary:",final_accurary.float())
 
-#prediction
+# 3 predictions
+
+#analog vs digital
+rand_int=random.randint(0,len(x_test))
+current_pred=y_pred[rand_int]
+digital=sum(current_pred[0:10])
+analog=sum(current_pred[10:])
+print("Analog:", analog, "Digtial", digital)
+print(list(radio_mod.keys())[y_test[rand_int].int()])
+plt.scatter(x_test[rand_int][0],x_test[rand_int][1])
+plt.show()
+
+#Phase shift keying
+rand_int=random.randint(0,len(x_test))
+current_pred=y_pred[rand_int]
+psk=sum(current_pred[0:3])
+other=sum(current_pred[3:])
+print("PSK:", psk, "Other", other)
+print(list(radio_mod.keys())[y_test[rand_int].int()])
+plt.scatter(x_test[rand_int][0],x_test[rand_int][1])
+plt.show()
+
+#Frequency shift keying
+rand_int=random.randint(0,len(x_test))
+current_pred=y_pred[rand_int]
+fsk=sum(current_pred[6:9])
+other=1-fsk
+print("FSK:", fsk, "Other", other)
+print(list(radio_mod.keys())[y_test[rand_int].int()])
+plt.scatter(x_test[rand_int][0],x_test[rand_int][1])
+plt.show()
+
 
 #delete model
 del model
