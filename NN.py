@@ -7,54 +7,57 @@ import matplotlib.pyplot as plt
 import random
 
 #dictionary to convert strings into numberic values
-radio_mod={'BPSK':0,'QPSK':1,'8PSK':2,'QAM16':3,'QAM64':4,'BFSK':5,'CPFSK':6,'PAM4':7,'GFSK':8,'WBFM':9,'AM-SSB':10,'AM-DSB':11}
+radio_mod={'BPSK': 0,
+           'QPSK': 1,
+           '8PSK': 2,
+           'QAM16':3,
+           'QAM64':4,
+           'BFSK':5,
+           'CPFSK':6,
+           'PAM4':7,
+           'GFSK':8,
+           'WBFM':9,
+           'AM-SSB':10,
+           'AM-DSB':11}
 
 #~Define the model
 class RadioNN(nn.Module):
     def __init__(self):
         super().__init__()
-        self.hidden1=nn.InstanceNorm1d(2)
+        self.hidden1=nn.BatchNorm1d(2)
         self.conv1=nn.Conv1d(2,64,9)
         self.act1=nn.ReLU()
-        self.hidden2=nn.InstanceNorm1d(64)
         self.conv2=nn.Conv1d(64,64,9)
         self.act2=nn.ReLU()
-        self.hidden3=nn.InstanceNorm1d(64)
-        self.conv3=nn.Conv1d(64,64,9)
+        self.conv3=nn.Conv1d(64,12,9)
         self.act3=nn.ReLU()
-        self.hidden4=nn.InstanceNorm1d(64)
-        self.linear1=nn.Linear(104,64)
+        self.pool=nn.MaxPool1d(9)
+        self.linear1=nn.Linear(11,64)
         self.linear2=nn.Linear(64,256)
-        self.linear3=nn.Linear(256,2)
-        self.pool=nn.MaxPool1d(1)
+        self.linear3=nn.Linear(256,1)
         self.output=nn.Softmax(1)
 
     def forward(self, x):
         x = self.act1(self.conv1(self.hidden1(x)))
-        x = self.act2(self.conv2(self.hidden2(x)))
-        x = self.act3(self.conv3(self.hidden3(x)))
-        x = self.linear3(self.linear2(self.linear1(self.hidden4(x))))
-        x = self.output(self.pool(x))
-        return x [:, -1, :]
+        x = self.act2(self.conv2(x))
+        x = self.pool(self.act3(self.conv3(x)))
+        x = self.linear3(self.linear2(self.linear1(x)))
+        x = self.output(x)
+        return x[:,:,-1]
 
 model=RadioNN()
 
 #~Training
 
-#reset parameters
-model.hidden1.reset_parameters()
 model.conv1.reset_parameters()
-model.hidden2.reset_parameters()
-model.conv2.reset_parameters()
-model.hidden3.reset_parameters()
+model.conv2.reset_parameters()\
 model.conv3.reset_parameters()
-model.hidden4.reset_parameters()
 model.linear1.reset_parameters()
 model.linear2.reset_parameters()
 model.linear3.reset_parameters()
 
 #loss and optimizer
-fn_loss=nn.CrossEntropyLoss() #cross entropy
+fn_loss=nn.CrossEntropyLoss() #cross entorpy loss
 optimizer = optim.Adam(model.parameters(), lr=0.0009)
 
 #load training data
@@ -71,7 +74,7 @@ for k in keys:
         else:
             rand_num=random.randint(0,len(x_train)-1)
         x_train.insert(rand_num,x)
-        y_train.insert(rand_num,[radio_mod[k[0].decode()],k[1]])
+        y_train.insert(rand_num,radio_mod[k[0].decode()])
 x_train=torch.Tensor(np.array(x_train))
 y_train=torch.Tensor(np.array(y_train))
 
@@ -89,7 +92,7 @@ for k in keys:
         else:
             rand_num=random.randint(0,len(x_valid)-1)
         x_valid.insert(rand_num,x)
-        y_valid.insert(rand_num,[radio_mod[k[0].decode()],k[1]])
+        y_valid.insert(rand_num,radio_mod[k[0].decode()])
 x_valid=torch.Tensor(np.array(x_valid))
 y_valid=torch.Tensor(np.array(y_valid))
 
@@ -99,35 +102,37 @@ mini_batch_size=64
 previous_accurary=-2
 current_accurary=-1
 y_pred = model(x_valid[0:len(x_valid)])
-v_accurary=[(y_pred.round() == y_valid).float().mean()*100]
-current_loss=fn_loss(y_pred,y_valid)
+current_loss=fn_loss(y_pred,y_valid.long())
 v_loss=[current_loss.detach().float()]
+v_accurary=[(torch.argmax(y_pred) == y_valid).float().mean()*100]
 y_pred = model(x_train[0:len(x_train)])
-t_accurary=[(y_pred.round() == y_train).float().mean()*100]
-current_loss=fn_loss(y_pred,y_train)
+current_loss=fn_loss(y_pred,y_train.long())
 t_loss=[current_loss.detach().float()]
+t_accurary=[(torch.argmax(y_pred,dim=1) == y_train).float().mean()*100]
 
 #add stopping critera
-while current_accurary>previous_accurary:
+while current_accurary>previous_accurary or current_accurary==0:
     for i in range(0, len(train_data), mini_batch_size):
         xbatch = x_train[i:i+mini_batch_size]
         ypred=model(xbatch)
         ybatch = y_train[i:i+mini_batch_size]
-        current_loss=fn_loss(ypred, ybatch)
+        current_loss=fn_loss(ypred, ybatch.long())
         optimizer.zero_grad()
         current_loss.backward()
         optimizer.step()
     #calcluate loss and accurary
     previous_accurary=current_accurary
     y_pred = model(x_valid[0:len(x_valid)])
-    current_accurary=(y_pred.round() == y_valid).float().mean()*100
+    current_loss=fn_loss(y_pred,y_valid.long())
+    current_accurary=(torch.argmax(y_pred,dim=1) == y_valid).float().mean()*100
+    print(current_accurary)
     v_accurary.append(current_accurary)
-    current_loss=fn_loss(y_pred,y_valid)
     v_loss.append(current_loss.detach().float())
     y_pred = model(x_train[0:len(x_train)])
-    t_accurary.append((y_pred.round() == y_train).float().mean()*100)
-    current_loss=fn_loss(y_pred,y_train)
+    current_loss=fn_loss(y_pred,y_train.long())
     t_loss.append(current_loss.detach().float())
+    t_accurary.append((torch.argmax(y_pred,dim=1) == y_train).float().mean()*100)
+    
 
 #plot
 plt.plot(range(0,len(t_accurary)),t_accurary,range(0,len(v_accurary)),v_accurary)
@@ -158,13 +163,15 @@ for k in keys:
         else:
             rand_num=random.randint(0,len(x_test)-1)
         x_test.insert(rand_num,x)
-        y_test.insert(rand_num,[radio_mod[k[0].decode()],k[1]])
+        y_test.insert(rand_num,radio_mod[k[0].decode()])
 x_test=torch.Tensor(np.array(x_test))
 y_test=torch.Tensor(np.array(y_test))
 
 y_pred = model(x_test[0:len(x_test)])
-final_accurary=(y_pred.round() == y_test).float().mean()*100
+final_accurary=(torch.argmax(y_pred,dim=1) == y_test).float().mean()*100
 print("Final accuary:",final_accurary.float())
+
+#prediction
 
 #delete model
 del model
