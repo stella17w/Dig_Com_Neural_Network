@@ -62,7 +62,7 @@ model.linear3.reset_parameters()
 
 #loss and optimizer
 fn_loss=nn.CrossEntropyLoss() #cross entorpy loss
-optimizer = optim.Adam(model.parameters(), lr=0.0009)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 #load training data
 with open("training.pkl", 'rb') as file:
@@ -182,8 +182,8 @@ print("Final accuary:",final_accurary.float())
 #analog vs digital
 rand_int=random.randint(0,len(x_test))
 current_pred=y_pred[rand_int]
-digital=sum(current_pred[0:10])
-analog=sum(current_pred[10:])
+digital=sum(current_pred[0:9])
+analog=sum(current_pred[9:])
 print("Analog:", analog, "Digtial", digital)
 print(list(radio_mod.keys())[y_test[rand_int].int()])
 plt.scatter(x_test[rand_int][0],x_test[rand_int][1])
